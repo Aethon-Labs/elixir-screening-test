@@ -55,7 +55,7 @@ defmodule ElixirInterviewStarter.CalibrationServer do
     Process.send_after(self(), :precheck1_timeout, 30_000)
     DeviceMessages.send(user_email, "startPrecheck1")
     calibration_session = %{calibration_session | current_step: "startPrecheck1"}
-    {:reply, {:ok, calibration_session}, calibration_session}
+    {:noreply, calibration_session}
   end
 
   @impl true
@@ -79,7 +79,7 @@ defmodule ElixirInterviewStarter.CalibrationServer do
     calibration_session = %{calibration_session | current_step: "precheck1"}
 
     if precheck1 do
-      {:reply, {:ok, calibration_session}, calibration_session}
+      {:noreply, calibration_session}
     else
       {:stop, :normal, %{calibration_session | failed_at: "precheck1"}}
     end
@@ -92,10 +92,16 @@ defmodule ElixirInterviewStarter.CalibrationServer do
       ) do
     calibration_session = %{calibration_session | cartridge_status: cartridge_status}
 
-    if cartridge_status do
-      {:reply, {:ok, calibration_session}, calibration_session}
-    else
-      {:stop, :normal, %{calibration_session | failed_at: "cartridgeStatus"}}
+    cond do
+      calibration_session.cartridge_status and calibration_session.submerged_in_water ->
+        GenServer.cast(self(), :calibrate)
+        {:noreply, calibration_session}
+
+      calibration_session.cartridge_status ->
+        {:noreply, calibration_session}
+
+      true ->
+        {:stop, :normal, %{calibration_session | failed_at: "cartridgeStatus"}}
     end
   end
 
@@ -106,10 +112,16 @@ defmodule ElixirInterviewStarter.CalibrationServer do
       ) do
     calibration_session = %{calibration_session | submerged_in_water: submerged_in_water}
 
-    if submerged_in_water do
-      {:reply, {:ok, calibration_session}, calibration_session}
-    else
-      {:stop, :normal, %{calibration_session | failed_at: "submergedInWater"}}
+    cond do
+      calibration_session.cartridge_status and calibration_session.submerged_in_water ->
+        GenServer.cast(self(), :calibrate)
+        {:noreply, calibration_session}
+
+      calibration_session.submerged_in_water ->
+        {:noreply, calibration_session}
+
+      true ->
+        {:stop, :normal, %{calibration_session | failed_at: "submergedInWater"}}
     end
   end
 
@@ -126,7 +138,7 @@ defmodule ElixirInterviewStarter.CalibrationServer do
     calibration_session = %{calibration_session | current_step: "completed"}
 
     if calibrate do
-      {:reply, {:ok, calibration_session}, calibration_session}
+      {:noreply, calibration_session}
     else
       {:stop, :normal, %{calibration_session | failed_at: "calibrate"}}
     end
@@ -154,9 +166,18 @@ defmodule ElixirInterviewStarter.CalibrationServer do
   end
 
   @impl true
-  def handle_call(
+  def handle_call(:calibrate, _from, calibration_session) do
+    {:stop, :normal, %{calibration_session | failed_at: "startPrecheck2"}}
+  end
+
+  @impl true
+  def handle_call(:get_current_session, _from, calibration_session) do
+    {:reply, {:ok, calibration_session}, calibration_session}
+  end
+
+  @impl true
+  def handle_cast(
         :calibrate,
-        _from,
         %CalibrationSession{
           user_email: user_email,
           current_step: "startPrecheck2",
@@ -167,16 +188,6 @@ defmodule ElixirInterviewStarter.CalibrationServer do
     Process.send_after(self(), :calibrate_timeout, 100_000)
     DeviceMessages.send(user_email, "calibrate")
     calibration_session = %{calibration_session | current_step: "calibrate"}
-    {:reply, {:ok, calibration_session}, calibration_session}
-  end
-
-  @impl true
-  def handle_call(:calibrate, _from, calibration_session) do
-    {:stop, :normal, %{calibration_session | failed_at: "startPrecheck2"}}
-  end
-
-  @impl true
-  def handle_call(:get_current_session, _from, calibration_session) do
-    {:reply, {:ok, calibration_session}, calibration_session}
+    {:noreply, calibration_session}
   end
 end
