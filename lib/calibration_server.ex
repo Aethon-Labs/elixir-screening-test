@@ -137,7 +137,7 @@ defmodule ElixirInterviewStarter.CalibrationServer do
   @impl true
   def handle_info(
         :calibrate_timeout,
-        %CalibrationSession{current_step: "startPrecheck2"} = calibration_session
+        %CalibrationSession{current_step: "calibrate"} = calibration_session
       ) do
     {:stop, :normal, %{calibration_session | timeout_at: "calibrate"}}
   end
