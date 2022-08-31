@@ -5,7 +5,6 @@ defmodule ElixirInterviewStarter do
 
   alias ElixirInterviewStarter.CalibrationSession
   alias ElixirInterviewStarter.CalibrationServer
-  alias ElixirInterviewStarter.CalibrationSupervisor
 
   @spec start(user_email :: String.t()) :: {:ok, CalibrationSession.t()} | {:error, String.t()}
   @doc """
@@ -15,7 +14,7 @@ defmodule ElixirInterviewStarter do
   If the user already has an ongoing `CalibrationSession`, returns an error.
   """
   def start(user_email) do
-    case CalibrationSupervisor.start_calibration_session(user_email) do
+    case CalibrationServer.start(user_email) do
       {:error, {:already_started, _current_pid}} ->
         {:error, "Calibration Session already in progress"}
 
@@ -23,6 +22,9 @@ defmodule ElixirInterviewStarter do
         CalibrationServer.get_current_session(user_email)
     end
   end
+
+  # Terminate a Calibration process and remove it from supervision
+  def stop(user_email), do: CalibrationServer.stop(user_email)
 
   @spec start_precheck_2(user_email :: String.t()) ::
           {:ok, CalibrationSession.t()} | {:error, String.t()}

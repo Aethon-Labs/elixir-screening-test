@@ -3,36 +3,34 @@ defmodule ElixirInterviewStarter.CalibrationServer do
 
   alias ElixirInterviewStarter.CalibrationSession
   alias ElixirInterviewStarter.DeviceMessages
+  alias ElixirInterviewStarter.CalibrationSupervisor
 
   # Public API
   def start_link(user_email) do
-    case GenServer.start_link(__MODULE__, %CalibrationSession{user_email: user_email},
-           name: unique_process_name(user_email)
-         ) do
-      {:error, {:already_started, _current_pid}} ->
-        {:error, "Calibration Session already in progress"}
+    GenServer.start_link(__MODULE__, user_email, name: unique_process_name(user_email))
+  end
 
-      {:ok, _current_pid} ->
-        {:ok, %CalibrationSession{user_email: user_email}}
+  def start(user_email) do
+    DynamicSupervisor.start_child(CalibrationSupervisor, {__MODULE__, user_email})
+  end
+
+  # Terminate a Calibration process and remove it from supervision
+  def stop(user_email) do
+    case find_genserver_process(user_email) do
+      nil -> :not_found
+      pid -> GenServer.stop(pid)
     end
   end
 
   defp unique_process_name(user_email),
-    do: {:via, Registry, {Registry.Calibration, "user_email-" <> user_email}}
+    do: {:via, Registry, {ElixirInterviewStarter.Registry, "user_email-" <> user_email}}
 
-  defp find_genserver_process(user_email), do: GenServer.whereis(unique_process_name(user_email))
-
-  def start_precheck_1(user_email) do
-    case find_genserver_process(user_email) do
-      nil -> {:error, "No Calibration Session in progress"}
-      pid -> GenServer.call(pid, :start_precheck_1, 30_000)
-    end
-  end
+  def find_genserver_process(user_email), do: GenServer.whereis(unique_process_name(user_email))
 
   def start_precheck_2(user_email) do
     case find_genserver_process(user_email) do
       nil -> {:error, "No Calibration Session in progress"}
-      pid -> GenServer.call(pid, :start_precheck_2, 30_000)
+      pid -> GenServer.call(pid, :start_precheck_2)
     end
   end
 
