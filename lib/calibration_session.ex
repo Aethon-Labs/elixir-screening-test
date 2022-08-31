@@ -6,6 +6,10 @@ defmodule ElixirInterviewStarter.CalibrationSession do
   """
 
   @type t() :: %__MODULE__{}
-
-  defstruct []
+  defstruct user_email: nil,
+            current_step: nil,
+            failed_at: nil,
+            timeout_at: nil,
+            cartridge_status: nil,
+            submerged_in_water: nil
 end
