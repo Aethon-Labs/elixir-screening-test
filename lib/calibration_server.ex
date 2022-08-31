@@ -76,10 +76,8 @@ defmodule ElixirInterviewStarter.CalibrationServer do
 
   @impl true
   def handle_info(%{"precheck1" => precheck1}, calibration_session) do
-    calibration_session = %{calibration_session | current_step: "precheck1"}
-
     if precheck1 do
-      {:noreply, calibration_session}
+      {:noreply, %{calibration_session | current_step: "precheck1Completed"}}
     else
       {:stop, :normal, %{calibration_session | failed_at: "precheck1"}}
     end
@@ -95,7 +93,7 @@ defmodule ElixirInterviewStarter.CalibrationServer do
     cond do
       calibration_session.cartridge_status and calibration_session.submerged_in_water ->
         GenServer.cast(self(), :calibrate)
-        {:noreply, calibration_session}
+        {:noreply, %{calibration_session | current_step: "precheck2completed"}}
 
       calibration_session.cartridge_status ->
         {:noreply, calibration_session}
@@ -115,7 +113,7 @@ defmodule ElixirInterviewStarter.CalibrationServer do
     cond do
       calibration_session.cartridge_status and calibration_session.submerged_in_water ->
         GenServer.cast(self(), :calibrate)
-        {:noreply, calibration_session}
+        {:noreply, %{calibration_session | current_step: "precheck2completed"}}
 
       calibration_session.submerged_in_water ->
         {:noreply, calibration_session}
@@ -156,13 +154,31 @@ defmodule ElixirInterviewStarter.CalibrationServer do
   def handle_call(
         :start_precheck_2,
         _from,
-        %CalibrationSession{user_email: user_email, current_step: "precheck1"} =
+        %CalibrationSession{user_email: user_email, current_step: "precheck1Completed"} =
           calibration_session
       ) do
     Process.send_after(self(), :precheck2_timeout, 30_000)
     DeviceMessages.send(user_email, "startPrecheck2")
     calibration_session = %{calibration_session | current_step: "startPrecheck2"}
     {:reply, {:ok, calibration_session}, calibration_session}
+  end
+
+  @impl true
+  def handle_call(
+        :start_precheck_2,
+        _from,
+        %CalibrationSession{current_step: current_step} = calibration_session
+      ) do
+    cond do
+      current_step in ["precheck2completed", "calibrate", "completed"] ->
+        {:reply, {:error, "precheck2 already completed"}, calibration_session}
+
+      current_step in ["init", "startPrecheck1"] ->
+        {:reply, {:error, "precheck1 not completed"}, calibration_session}
+
+      true ->
+        {:reply, {:error, "unknown error"}, calibration_session}
+    end
   end
 
   @impl true
@@ -180,7 +196,7 @@ defmodule ElixirInterviewStarter.CalibrationServer do
         :calibrate,
         %CalibrationSession{
           user_email: user_email,
-          current_step: "startPrecheck2",
+          current_step: "precheck2completed",
           cartridge_status: true,
           submerged_in_water: true
         } = calibration_session

@@ -21,4 +21,12 @@ defmodule ElixirInterviewStarter.CalibrationSupervisor do
   def count_children do
     DynamicSupervisor.count_children(__MODULE__)
   end
+
+  def terminate_all_children do
+    __MODULE__
+    |> DynamicSupervisor.which_children()
+    |> Enum.each(fn child ->
+      DynamicSupervisor.terminate_child(__MODULE__, elem(child, 1))
+    end)
+  end
 end
