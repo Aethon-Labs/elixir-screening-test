@@ -12,9 +12,32 @@ defmodule ElixirInterviewStarter do
   for the session, and starts precheck 1.
 
   If the user already has an ongoing `CalibrationSession`, returns an error.
+
+  It accepts extra parameters as keyword list to change timeouts (ms):
+   - precheck1_timeout (defaults to 30_000)
+   - precheck2_timeout (defaults to 30_000)
+   - calibrate_timeout (defaults to 100_000)
   """
-  def start(user_email) do
-    case CalibrationServer.start(user_email) do
+
+  def start(user_email, opts \\ [])
+
+  def start(user_email, opts) do
+    calibration_session = %CalibrationSession{user_email: user_email}
+
+    precheck1_timeout =
+      Keyword.get(opts, :precheck1_timeout, calibration_session.precheck1_timeout)
+
+    precheck2_timeout =
+      Keyword.get(opts, :precheck2_timeout, calibration_session.precheck2_timeout)
+
+    calibrate_timeout =
+      Keyword.get(opts, :calibrate_timeout, calibration_session.calibrate_timeout)
+
+    calibration_session = %{calibration_session | precheck1_timeout: precheck1_timeout}
+    calibration_session = %{calibration_session | precheck2_timeout: precheck2_timeout}
+    calibration_session = %{calibration_session | calibrate_timeout: calibrate_timeout}
+
+    case CalibrationServer.start(calibration_session) do
       {:error, {:already_started, _current_pid}} ->
         {:error, "Calibration Session already in progress"}
 

@@ -6,12 +6,12 @@ defmodule ElixirInterviewStarter.CalibrationServer do
   alias ElixirInterviewStarter.CalibrationSupervisor
 
   # Public API
-  def start_link(user_email) do
-    GenServer.start_link(__MODULE__, user_email, name: unique_process_name(user_email))
+  def start_link(%CalibrationSession{user_email: user_email} = calibration_session) do
+    GenServer.start_link(__MODULE__, calibration_session, name: unique_process_name(user_email))
   end
 
-  def start(user_email) do
-    DynamicSupervisor.start_child(CalibrationSupervisor, {__MODULE__, user_email})
+  def start(%CalibrationSession{} = calibration_session) do
+    DynamicSupervisor.start_child(CalibrationSupervisor, {__MODULE__, calibration_session})
   end
 
   defp unique_process_name(user_email),
@@ -34,17 +34,17 @@ defmodule ElixirInterviewStarter.CalibrationServer do
   end
 
   @impl true
-  def init(user_email) do
-    {:ok, %CalibrationSession{user_email: user_email, current_step: "init"},
-     {:continue, :start_precheck_1}}
+  def init(%CalibrationSession{} = calibration_session) do
+    {:ok, %{calibration_session | current_step: "init"}, {:continue, :start_precheck_1}}
   end
 
   @impl true
   def handle_continue(
         :start_precheck_1,
-        %CalibrationSession{user_email: user_email} = calibration_session
+        %CalibrationSession{user_email: user_email, precheck1_timeout: precheck1_timeout} =
+          calibration_session
       ) do
-    Process.send_after(self(), :precheck1_timeout, 30_000)
+    Process.send_after(self(), :precheck1_timeout, precheck1_timeout)
     DeviceMessages.send(user_email, "startPrecheck1")
     calibration_session = %{calibration_session | current_step: "startPrecheck1"}
     {:noreply, calibration_session}
@@ -146,10 +146,13 @@ defmodule ElixirInterviewStarter.CalibrationServer do
   def handle_call(
         :start_precheck_2,
         _from,
-        %CalibrationSession{user_email: user_email, current_step: "precheck1Completed"} =
-          calibration_session
+        %CalibrationSession{
+          user_email: user_email,
+          precheck2_timeout: precheck2_timeout,
+          current_step: "precheck1Completed"
+        } = calibration_session
       ) do
-    Process.send_after(self(), :precheck2_timeout, 30_000)
+    Process.send_after(self(), :precheck2_timeout, precheck2_timeout)
     DeviceMessages.send(user_email, "startPrecheck2")
     calibration_session = %{calibration_session | current_step: "startPrecheck2"}
     {:reply, {:ok, calibration_session}, calibration_session}
@@ -185,10 +188,11 @@ defmodule ElixirInterviewStarter.CalibrationServer do
           user_email: user_email,
           current_step: "precheck2completed",
           cartridge_status: true,
-          submerged_in_water: true
+          submerged_in_water: true,
+          calibrate_timeout: calibrate_timeout
         } = calibration_session
       ) do
-    Process.send_after(self(), :calibrate_timeout, 100_000)
+    Process.send_after(self(), :calibrate_timeout, calibrate_timeout)
     DeviceMessages.send(user_email, "calibrate")
     calibration_session = %{calibration_session | current_step: "calibrate"}
     {:noreply, calibration_session}

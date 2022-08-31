@@ -56,6 +56,19 @@ defmodule ElixirInterviewStarterTest do
              {:error, "Calibration Session already in progress"}
   end
 
+  test "timeout precheck1" do
+    user_email = "test@email.com"
+
+    assert {:ok, %CalibrationSession{current_step: "startPrecheck1"}} =
+             ElixirInterviewStarter.start(user_email, precheck1_timeout: 10)
+
+    refute is_nil(CalibrationServer.find_genserver_process(user_email))
+
+    :timer.sleep(15)
+
+    assert is_nil(CalibrationServer.find_genserver_process(user_email))
+  end
+
   test "start_precheck_2/1 starts precheck 2" do
     user_email = "test@email.com"
 

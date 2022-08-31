@@ -11,5 +11,8 @@ defmodule ElixirInterviewStarter.CalibrationSession do
             failed_at: nil,
             timeout_at: nil,
             cartridge_status: nil,
-            submerged_in_water: nil
+            submerged_in_water: nil,
+            precheck1_timeout: 30_000,
+            precheck2_timeout: 30_000,
+            calibrate_timeout: 100_000
 end
