@@ -23,9 +23,6 @@ defmodule ElixirInterviewStarter do
     end
   end
 
-  # Terminate a Calibration process and remove it from supervision
-  def stop(user_email), do: CalibrationServer.stop(user_email)
-
   @spec start_precheck_2(user_email :: String.t()) ::
           {:ok, CalibrationSession.t()} | {:error, String.t()}
   @doc """

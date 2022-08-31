@@ -14,14 +14,6 @@ defmodule ElixirInterviewStarter.CalibrationServer do
     DynamicSupervisor.start_child(CalibrationSupervisor, {__MODULE__, user_email})
   end
 
-  # Terminate a Calibration process and remove it from supervision
-  def stop(user_email) do
-    case find_genserver_process(user_email) do
-      nil -> :not_found
-      pid -> GenServer.stop(pid)
-    end
-  end
-
   defp unique_process_name(user_email),
     do: {:via, Registry, {ElixirInterviewStarter.Registry, "user_email-" <> user_email}}
 
@@ -179,11 +171,6 @@ defmodule ElixirInterviewStarter.CalibrationServer do
       true ->
         {:reply, {:error, "unknown error"}, calibration_session}
     end
-  end
-
-  @impl true
-  def handle_call(:calibrate, _from, calibration_session) do
-    {:stop, :normal, %{calibration_session | failed_at: "startPrecheck2"}}
   end
 
   @impl true
